@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: innova-frontend
+  namespace: innova
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: innova-frontend
+  template:
+    metadata:
+      labels:
+        app: innova-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: 506146271399.dkr.ecr.us-east-1.amazonaws.com/innova-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: innova-frontend
+  namespace: innova
+spec:
+  type: LoadBalancer
+  selector:
+    app: innova-frontend
+  ports:
+    - port: 80
+      targetPort: 8080
