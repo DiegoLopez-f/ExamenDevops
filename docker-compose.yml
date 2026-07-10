@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # CAPA 3: BASE DE DATOS
+  # ==========================================
+  mysql-db:
+    image: mysql:8.0
+    container_name: innova_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: super_secret_root
+      MYSQL_DATABASE: ecommercedb
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: db_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend_db_net
+    platform: linux/amd64
+    # 1. SOLUCIÓN DE SINCRONIZACIÓN: Healthcheck para saber cuándo MySQL está realmente listo
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-psuper_secret_root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # CAPA 2: MICROSERVICIOS
+  # ==========================================
+  ms-ventas:
+    build:
+      context: ./back-Ventas/Springboot-API-REST
+      dockerfile: Dockerfile
+    container_name: innova_ms_ventas
+    restart: unless-stopped
+    environment:
+      # 2. SOLUCIÓN DE SEGURIDAD: Inyectamos allowPublicKeyRetrieval=true a la cadena de conexión
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/ecommercedb?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
+      - DB_USERNAME=db_user
+      - DB_PASSWORD=db_password
+    ports:
+      - "8081:8080"
+    depends_on:
+      mysql-db:
+        condition: service_healthy # Espera a que el healthcheck de MySQL pase antes de arrancar
+    networks:
+      - frontend_backend_net
+      - backend_db_net
+    platform: linux/amd64
+
+  ms-despachos:
+    build:
+      context: ./back-Despachos/Springboot-API-REST-DESPACHO
+      dockerfile: Dockerfile
+    container_name: innova_ms_despachos
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/ecommercedb?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
+      - DB_USERNAME=db_user
+      - DB_PASSWORD=db_password
+    ports:
+      - "8082:8080"
+    depends_on:
+      mysql-db:
+        condition: service_healthy # Espera a que el healthcheck de MySQL pase antes de arrancar
+    networks:
+      - frontend_backend_net
+      - backend_db_net
+    platform: linux/amd64
+
+  # ==========================================
+  # CAPA 1: FRONTEND
+  # ==========================================
+  frontend:
+    build:
+      context: ./front_despacho
+      dockerfile: Dockerfile
+    container_name: innova_frontend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ms-ventas
+      - ms-despachos
+    networks:
+      - frontend_backend_net
+    platform: linux/amd64
+
+networks:
+  frontend_backend_net:
+    driver: bridge
+  backend_db_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local

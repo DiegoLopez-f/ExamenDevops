@@ -8,15 +8,21 @@ export const FormCierreDespacho = ({ despacho, onClose }) => {
   const onSubmit = async (data) => {
     console.log("onSubmit ejecutado");
     const jsonData = {
+      idDespacho: despacho.idDespacho,
+      fechaDespacho: despacho.fechaDespacho,
+      patenteCamion: despacho.patenteCamion,
+      idCompra: despacho.idCompra,
+      direccionCompra: despacho.direccionCompra,
+      valorCompra: despacho.valorCompra,
       intento: data.intento,
-      despachado: data.despachado,
+      despachado: (data.despachado === 'true' || data.despachado === true)
     };
 
     console.log("Datos del formulario:", jsonData);
 
     try {
       await axios.put(
-        `http://192.168.320/api/v1/despachos/${despacho.idDespacho}`,
+        `/api/v1/despachos/${despacho.idDespacho}`,
         jsonData,
         {
           headers:{
